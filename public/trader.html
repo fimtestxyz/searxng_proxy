@@ -179,6 +179,17 @@
     @media (prefers-color-scheme: dark) {
       .markdown-panel { background: #1a1a1a; border-color: #333; }
     }
+
+    .auto-toggle { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; font-size: 0.85rem; color: #888; margin: 8px 0; }
+    .auto-toggle label { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px; }
+    .toggle-track { width: 36px; height: 20px; border-radius: 10px; background: #ccc; position: relative; transition: background 0.2s; flex-shrink: 0; }
+    .toggle-track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 0.2s; }
+    .toggle-input { display: none; }
+    .toggle-input:checked + .toggle-track { background: #4a90d9; }
+    .toggle-input:checked + .toggle-track::after { transform: translateX(16px); }
+    @media (prefers-color-scheme: dark) {
+      .toggle-track { background: #444; }
+    }
   </style>
 </head>
 <body>
@@ -214,6 +225,18 @@
       </div>
     </div>
     <button class="search-btn" id="traderSearchBtn" type="button">Search</button>
+    <div class="auto-toggle">
+      <label>
+        <input type="checkbox" class="toggle-input" id="autoLoadToggle">
+        <span class="toggle-track"></span>
+        Auto-load content
+      </label>
+      <label>
+        <input type="checkbox" class="toggle-input" id="rawMarkdownToggle">
+        <span class="toggle-track"></span>
+        Raw markdown
+      </label>
+    </div>
   </header>
 
   <div id="traderStatus"></div>
@@ -269,6 +292,49 @@
     }
 
     let rawMarkdownChecked = false;
+
+    const autoLoadToggle = document.getElementById('autoLoadToggle');
+    const rawMarkdownToggle = document.getElementById('rawMarkdownToggle');
+
+    rawMarkdownToggle.addEventListener('change', () => {
+      rawMarkdownChecked = rawMarkdownToggle.checked;
+      loadedMarkdown.forEach((data, url) => {
+        const card = document.querySelector(`.result-card[data-url="${CSS.escape(url)}"]`);
+        if (card) {
+          const panel = card.querySelector('.markdown-panel');
+          if (panel) renderPanel(panel, data);
+        }
+      });
+    });
+
+    autoLoadToggle.addEventListener('change', () => {
+      if (autoLoadToggle.checked && lastSearchData) {
+        const buttons = [...document.querySelectorAll('.load-btn:not(.loaded)')];
+        if (buttons.length > 0) {
+          const urls = buttons.map(b => b.dataset.url);
+          buttons.forEach(btn => { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Loading...'; });
+          fetch('/api/markdown/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ urls }),
+          }).then(r => r.json()).then(data => {
+            data.results.forEach((result, i) => {
+              const btn = buttons[i];
+              const panel = btn.closest('.result-card')?.querySelector('.markdown-panel');
+              if (result.error) { btn.textContent = 'Retry'; btn.disabled = false; return; }
+              loadedMarkdown.set(result.url, result);
+              renderPanel(panel, result);
+              panel.classList.add('open');
+              btn.textContent = 'Hide content';
+              btn.classList.add('loaded');
+              btn.disabled = false;
+            });
+          }).catch(err => {
+            buttons.forEach(btn => { btn.textContent = 'Retry'; btn.disabled = false; });
+          });
+        }
+      }
+    });
 
     async function loadSources() {
       try {
