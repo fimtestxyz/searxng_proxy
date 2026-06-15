@@ -99,7 +99,7 @@
     .markdown-panel blockquote { border-left: 3px solid #ccc; padding-left: 12px; margin: 8px 0; opacity: 0.8; }
 
     .auto-toggle {
-      display: flex; align-items: center; gap: 8px;
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
       font-size: 0.85rem; color: #888; margin-top: 10px;
     }
     .auto-toggle label { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px; }
@@ -120,6 +120,12 @@
       .toggle-track { background: #444; }
     }
 
+    .markdown-panel pre.raw-markdown {
+      white-space: pre-wrap; word-break: break-word;
+      background: transparent; color: inherit; padding: 0; margin: 0;
+      font-size: 0.88rem; line-height: 1.6;
+    }
+
     .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid #ccc; border-top-color: #666; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 4px; }
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
@@ -137,6 +143,11 @@
         <span class="toggle-track"></span>
         Auto-load content
       </label>
+      <label>
+        <input type="checkbox" class="toggle-input" id="rawMarkdownToggle">
+        <span class="toggle-track"></span>
+        Raw markdown
+      </label>
     </div>
   </header>
 
@@ -152,11 +163,20 @@
     const searchBtn = document.getElementById('searchBtn');
     const statusEl = document.getElementById('status');
     const resultsEl = document.getElementById('results');
+    const rawMarkdownToggle = document.getElementById('rawMarkdownToggle');
 
     searchForm.addEventListener('submit', (e) => {
       e.preventDefault();
       const q = searchInput.value.trim();
       if (q) performSearch(q);
+    });
+
+    rawMarkdownToggle.addEventListener('change', () => {
+      for (const [url, data] of loadedMarkdown) {
+        const panel = document.querySelector(`.load-btn[data-url="${CSS.escape(url)}"]`)
+          ?.closest('.result')?.querySelector('.markdown-panel');
+        if (panel) renderPanel(panel, data);
+      }
     });
 
     async function performSearch(q) {
@@ -180,6 +200,14 @@
         statusEl.innerHTML = `<span class="error">${err.message}</span>`;
       } finally {
         searchBtn.disabled = false;
+      }
+    }
+
+    function renderPanel(panel, data) {
+      if (rawMarkdownToggle.checked) {
+        panel.innerHTML = `<pre class="raw-markdown">${escHtml(data.markdown || '')}</pre>`;
+      } else {
+        panel.innerHTML = DOMPurify.sanitize(marked.parse(data.markdown || ''));
       }
     }
 
@@ -218,8 +246,7 @@
         if (!resp.ok) throw new Error(data.error || 'Conversion failed');
 
         loadedMarkdown.set(url, data);
-        const html = DOMPurify.sanitize(marked.parse(data.markdown || ''));
-        panel.innerHTML = html;
+        renderPanel(panel, data);
         panel.classList.add('open');
         btn.textContent = 'Hide content';
         btn.classList.add('loaded');
