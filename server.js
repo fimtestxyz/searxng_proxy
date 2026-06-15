@@ -14,6 +14,9 @@ try {
   process.exit(1);
 }
 
+const { SourceManager, mapTimeWindow, searchSearXNG } = require('./lib/trader');
+const sourceManager = new SourceManager();
+
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const MARKDOWN_CONCURRENCY = parseInt(process.env.MARKDOWN_CONCURRENCY || '3', 10);
 
@@ -96,6 +99,60 @@ app.get('/api/health', async (_req, res) => {
     url2md: urlToMd ? 'loaded' : 'missing',
     markdown_concurrency: MARKDOWN_CONCURRENCY,
   });
+});
+
+// Trader routes
+app.get('/trader', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'trader.html'));
+});
+
+app.get('/api/trader/search', async (req, res) => {
+  const tickers = (req.query.tickers || '').split(',').map(t => t.trim()).filter(Boolean);
+  const timeWindow = req.query.time_window || '1d';
+  const sourcesRaw = req.query.sources;
+  let sources;
+  try {
+    sources = sourcesRaw ? JSON.parse(sourcesRaw) : [];
+  } catch {
+    return res.status(400).json({ error: 'Invalid sources parameter' });
+  }
+
+  if (tickers.length === 0) {
+    return res.status(400).json({ error: 'Missing tickers parameter' });
+  }
+
+  const timeRange = mapTimeWindow(timeWindow);
+  const t0 = Date.now();
+
+  const tasks = sources.map(async (src) => {
+    const category = src.category || 'news';
+    const results = await searchSearXNG(searxng, tickers, src.domain, src.engine, timeRange, category).catch(() => []);
+    return {
+      source: { name: src.name, domain: src.domain, category },
+      results,
+    };
+  });
+
+  const grouped = await Promise.all(tasks);
+  const elapsed = Date.now() - t0;
+
+  res.json({
+    tickers,
+    time_window: timeWindow,
+    time_range_label: timeWindow === '1h' ? '1 day' : `${timeWindow}`,
+    count: grouped.reduce((sum, g) => sum + g.results.length, 0),
+    grouped,
+    elapsed_ms: elapsed,
+  });
+});
+
+app.get('/api/trader/sources', (_req, res) => {
+  res.json(sourceManager.getAll());
+});
+
+app.post('/api/trader/sources', (req, res) => {
+  sourceManager.save(req.body);
+  res.json({ ok: true });
 });
 
 app.listen(PORT, () => {
