@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trader — Stock News Search</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      max-width: 900px; margin: 0 auto; padding: 24px 16px;
+      background: #fff; color: #1a1a1a;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #0f0f0f; color: #e0e0e0; }
+    }
+
+    header { margin-bottom: 20px; }
+    header h1 { font-size: 1.4rem; margin-bottom: 12px; font-weight: 600; }
+
+    /* Ticker pills */
+    .ticker-input-area { display: flex; flex-direction: column; gap: 6px; }
+    .ticker-pills { display: flex; flex-wrap: wrap; gap: 2px; }
+    .ticker-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 4px 10px; background: #e8f0fe; border-radius: 16px;
+      font-size: 0.88rem; font-weight: 500; margin: 2px;
+    }
+    .ticker-pill button {
+      background: none; border: none; cursor: pointer;
+      font-size: 1.1rem; color: #666; padding: 0 2px;
+    }
+    @media (prefers-color-scheme: dark) {
+      .ticker-pill { background: #2a3a5a; }
+    }
+
+    .search-input {
+      width: 100%; padding: 10px 14px; font-size: 1rem;
+      border: 1px solid #ddd; border-radius: 6px; outline: none;
+    }
+    .search-input:focus { border-color: #4a90d9; }
+    @media (prefers-color-scheme: dark) {
+      .search-input { background: #1a1a1a; border-color: #333; color: #e0e0e0; }
+    }
+
+    /* Time window */
+    .time-window-selector { display: flex; gap: 4px; flex-wrap: wrap; margin: 8px 0; }
+    .tw-option { cursor: pointer; }
+    .tw-option input { display: none; }
+    .tw-option span {
+      display: block; padding: 6px 14px; border: 1px solid #ddd;
+      border-radius: 6px; font-size: 0.9rem;
+    }
+    .tw-option input:checked + span {
+      background: #4a90d9; color: #fff; border-color: #4a90d9;
+    }
+    @media (prefers-color-scheme: dark) {
+      .tw-option span { border-color: #333; color: #ccc; background: #1a1a1a; }
+      .tw-option input:checked + span { background: #4a90d9; color: #fff; }
+    }
+
+    /* Source filters */
+    .source-filters { display: flex; flex-wrap: wrap; gap: 16px; margin: 8px 0; }
+    .source-category h4 { font-size: 0.85rem; margin-bottom: 4px; color: #666; }
+    .source-label {
+      display: inline-flex; align-items: center; gap: 4px;
+      margin-right: 12px; font-size: 0.88rem; cursor: pointer;
+    }
+    .source-label span {
+      padding: 3px 8px; border: 1px solid #ddd; border-radius: 4px;
+    }
+    .source-label input:checked + span {
+      background: #e8f5e9; border-color: #81c784; color: #2e7d32;
+    }
+    @media (prefers-color-scheme: dark) {
+      .source-label span { border-color: #333; background: #1a1a1a; }
+      .source-label input:checked + span { background: #1b3a1b; border-color: #4caf50; color: #81c784; }
+    }
+
+    /* Buttons */
+    .search-btn {
+      padding: 10px 20px; font-size: 1rem; border: none; border-radius: 6px;
+      background: #4a90d9; color: #fff; cursor: pointer; font-weight: 500; margin: 8px 0;
+    }
+    .search-btn:hover { background: #3a7fc9; }
+    .search-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* Status */
+    .status-text { font-size: 0.85rem; color: #888; margin: 12px 0 16px; }
+    .error { color: #d32f2f; margin: 12px 0; }
+    @media (prefers-color-scheme: dark) { .error { color: #ff6b6b; } }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block; width: 12px; height: 12px;
+      border: 2px solid #ccc; border-top-color: #666; border-radius: 50%;
+      animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 4px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* View toggle */
+    .results-toolbar { margin: 8px 0; }
+    .view-toggle { display: flex; gap: 4px; }
+    .view-btn {
+      padding: 4px 12px; border: 1px solid #ddd; border-radius: 4px;
+      background: #f5f5f5; cursor: pointer; font-size: 0.85rem;
+    }
+    .view-btn.active { background: #4a90d9; color: #fff; border-color: #4a90d9; }
+    @media (prefers-color-scheme: dark) {
+      .view-btn { border-color: #333; background: #1a1a1a; color: #ccc; }
+    }
+
+    /* Result groups */
+    .ticker-group, .source-group { margin-bottom: 16px; }
+    .ticker-group-header, .source-group-header {
+      font-size: 1rem; font-weight: 600; padding: 8px 0;
+      border-bottom: 2px solid #4a90d9; margin-bottom: 8px;
+    }
+    .result-card {
+      border: 1px solid #e8e8e8; border-radius: 8px; padding: 14px; margin-bottom: 10px;
+    }
+    .result-card-header {
+      display: flex; justify-content: space-between;
+      font-size: 0.82rem; color: #888; margin-bottom: 6px;
+    }
+    .result-card-source { font-weight: 500; color: #555; }
+    .result-card-title {
+      font-size: 0.95rem; font-weight: 600; margin-bottom: 4px;
+    }
+    .result-card-title a { color: inherit; text-decoration: none; }
+    .result-card-title a:hover { text-decoration: underline; }
+    .result-card-snippet {
+      font-size: 0.88rem; line-height: 1.5; color: inherit;
+      opacity: 0.85; margin-bottom: 8px;
+    }
+    .result-card-actions {
+      display: flex; gap: 8px; font-size: 0.82rem; align-items: center;
+    }
+    .result-card-actions a { color: #1a73e8; }
+
+    .no-results { text-align: center; color: #888; padding: 40px 0; }
+
+    .load-btn {
+      font-size: 0.82rem; padding: 5px 12px; border-radius: 4px;
+      border: 1px solid #ccc; background: #f5f5f5; cursor: pointer;
+    }
+    .load-btn:hover { background: #eee; }
+    .load-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .load-btn.loaded { background: #e8f5e9; border-color: #81c784; color: #2e7d32; }
+    @media (prefers-color-scheme: dark) {
+      .result-card { border-color: #2a2a2a; background: #1a1a1a; }
+      .load-btn { background: #1a1a1a; border-color: #444; color: #ccc; }
+      .load-btn:hover { background: #2a2a2a; }
+      .load-btn.loaded { background: #1b3a1b; border-color: #4caf50; color: #81c784; }
+    }
+
+    .markdown-panel {
+      margin-top: 10px; padding: 12px; border-radius: 6px;
+      background: #f8f8f8; border: 1px solid #e0e0e0;
+      max-height: 400px; overflow-y: auto; display: none;
+    }
+    .markdown-panel.open { display: block; }
+    .markdown-panel h1, .markdown-panel h2, .markdown-panel h3 { margin: 12px 0 6px; }
+    .markdown-panel p { margin: 6px 0; line-height: 1.6; }
+    .markdown-panel pre { background: #272822; color: #f8f8f2; padding: 12px; border-radius: 4px; overflow-x: auto; margin: 8px 0; }
+    .markdown-panel code { font-family: 'SF Mono', Menlo, monospace; font-size: 0.88em; }
+    .markdown-panel ul, .markdown-panel ol { padding-left: 24px; margin: 8px 0; }
+    .markdown-panel a { color: #1a73e8; }
+    .markdown-panel img { max-width: 100%; }
+    .markdown-panel blockquote { border-left: 3px solid #ccc; padding-left: 12px; margin: 8px 0; opacity: 0.8; }
+    .markdown-panel pre.raw-markdown {
+      white-space: pre-wrap; word-break: break-word;
+      background: transparent; color: inherit; padding: 0; margin: 0;
+      font-size: 0.88rem; line-height: 1.6;
+    }
+    @media (prefers-color-scheme: dark) {
+      .markdown-panel { background: #1a1a1a; border-color: #333; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Trader &mdash; Stock News Search</h1>
+    <div class="ticker-input-area">
+      <div class="ticker-pills" id="tickerPills"></div>
+      <input class="search-input" id="tickerSearchInput" type="text" placeholder="Enter ticker and press Enter..." autocomplete="off">
+    </div>
+    <div class="time-window-selector" id="timeWindowSelector">
+      <label class="tw-option"><input type="radio" name="tw" value="1d" checked><span>1d</span></label>
+      <label class="tw-option"><input type="radio" name="tw" value="3d"><span>3d</span></label>
+      <label class="tw-option"><input type="radio" name="tw" value="5d"><span>5d</span></label>
+      <label class="tw-option"><input type="radio" name="tw" value="1m"><span>1m</span></label>
+      <label class="tw-option"><input type="radio" name="tw" value="3m"><span>3m</span></label>
+    </div>
+    <div class="source-filters" id="sourceFilters">
+      <div class="source-category" data-category="news">
+        <h4>&#128214; News</h4>
+        <div class="source-checkboxes"></div>
+      </div>
+      <div class="source-category" data-category="analysis">
+        <h4>&#128202; Analysis</h4>
+        <div class="source-checkboxes"></div>
+      </div>
+      <div class="source-category" data-category="social">
+        <h4>&#128172; Social</h4>
+        <div class="source-checkboxes"></div>
+      </div>
+      <div class="source-category" data-category="custom">
+        <h4>&#9881; Custom</h4>
+        <div class="source-checkboxes"></div>
+      </div>
+    </div>
+    <button class="search-btn" id="traderSearchBtn" type="button">Search</button>
+  </header>
+
+  <div id="traderStatus"></div>
+  <div class="results-toolbar">
+    <div class="view-toggle">
+      <button class="view-btn active" data-view="ticker" onclick="setViewMode('ticker')">By Ticker</button>
+      <button class="view-btn" data-view="source" onclick="setViewMode('source')">By Source</button>
+    </div>
+  </div>
+  <div id="traderResults"></div>
+
+  <script>
+    const tickers = [];
+    let currentView = 'ticker';
+    const loadedMarkdown = new Map();
+    let loadedSearchTickers = [];
+    let allSourcesFlat = {};
+    let lastSearchData = null;
+
+    const tickerSearchInput = document.getElementById('tickerSearchInput');
+    const traderSearchBtn = document.getElementById('traderSearchBtn');
+    const traderStatus = document.getElementById('traderStatus');
+    const traderResults = document.getElementById('traderResults');
+
+    function escHtml(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function escAttr(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    tickerSearchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const val = e.target.value.trim().toUpperCase();
+        if (val && !tickers.includes(val)) {
+          tickers.push(val);
+          renderPills();
+        }
+        e.target.value = '';
+      }
+    });
+
+    function renderPills() {
+      const container = document.getElementById('tickerPills');
+      container.innerHTML = tickers.map(t =>
+        `<span class="ticker-pill">${escHtml(t)}<button onclick="removeTicker('${escAttr(t)}')">&times;</button></span>`
+      ).join('');
+    }
+
+    function removeTicker(ticker) {
+      tickers.splice(tickers.indexOf(ticker), 1);
+      renderPills();
+    }
+
+    let rawMarkdownChecked = false;
+
+    async function loadSources() {
+      try {
+        const resp = await fetch('/api/trader/sources');
+        const sources = await resp.json();
+        for (const [category, items] of Object.entries(sources)) {
+          const container = document.querySelector(`.source-category[data-category="${category}"] .source-checkboxes`);
+          if (!container) continue;
+          items.forEach((src, i) => {
+            const key = `${category}:${i}`;
+            allSourcesFlat[key] = { ...src, category };
+            const label = document.createElement('label');
+            label.className = 'source-label';
+            label.innerHTML =
+              '<input type="checkbox" value="' + key + '" checked>' +
+              '<span>' + escHtml(src.name) + '</span>';
+            container.appendChild(label);
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load sources:', err);
+      }
+    }
+    loadSources();
+
+    traderSearchBtn.addEventListener('click', performTraderSearch);
+
+    async function performTraderSearch() {
+      const checkboxes = document.querySelectorAll('#sourceFilters input:checked');
+      const sourcesPayload = Array.from(checkboxes).map(cb => allSourcesFlat[cb.value]).filter(Boolean);
+      if (sourcesPayload.length === 0) return;
+      if (tickers.length === 0) return;
+
+      const timeWindow = document.querySelector('#timeWindowSelector input:checked').value;
+
+      traderStatus.innerHTML = '<span class="spinner"></span> Searching...';
+      traderResults.innerHTML = '';
+      loadedMarkdown.clear();
+
+      try {
+        const resp = await fetch(
+          '/api/trader/search?' +
+          'tickers=' + encodeURIComponent(tickers.join(',')) + '&' +
+          'time_window=' + encodeURIComponent(timeWindow) + '&' +
+          'sources=' + encodeURIComponent(JSON.stringify(sourcesPayload))
+        );
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Search failed');
+
+        traderStatus.innerHTML =
+          escHtml(data.tickers.join(', ')) + ' &mdash; ' +
+          escHtml(data.time_range_label) + ' &mdash; ' +
+          data.count + ' results in ' + data.elapsed_ms + 'ms';
+        loadedSearchTickers = [...tickers];
+        lastSearchData = data;
+        renderResults(data);
+      } catch (err) {
+        traderStatus.innerHTML = '<span class="error">' + escHtml(err.message) + '</span>';
+      }
+    }
+
+    function renderResults(data) {
+      const container = document.getElementById('traderResults');
+      const results = data.grouped.flatMap(g =>
+        g.results.map(r => ({ ...r, source: g.source }))
+      );
+
+      if (results.length === 0) {
+        container.innerHTML = '<p class="no-results">No results found.</p>';
+        return;
+      }
+
+      if (currentView === 'ticker') {
+        renderByTicker(container, results);
+      } else {
+        renderBySource(container, results);
+      }
+    }
+
+    function renderByTicker(container, results) {
+      const byTicker = {};
+      results.forEach(r => {
+        const ticker = findTickerMatch(r.title, r.content);
+        if (!byTicker[ticker]) byTicker[ticker] = [];
+        byTicker[ticker].push(r);
+      });
+
+      container.innerHTML = Object.keys(byTicker).map(ticker => {
+        const cards = byTicker[ticker].map(r => renderCard(r)).join('');
+        return '<div class="ticker-group">' +
+          '<div class="ticker-group-header">' + escHtml(ticker) + '</div>' +
+          cards + '</div>';
+      }).join('');
+    }
+
+    function renderBySource(container, results) {
+      const bySource = {};
+      results.forEach(r => {
+        const key = r.source.category + '/' + r.source.name;
+        if (!bySource[key]) bySource[key] = [];
+        bySource[key].push(r);
+      });
+
+      container.innerHTML = Object.keys(bySource).map(key => {
+        const cards = bySource[key].map(r => renderCard(r)).join('');
+        return '<div class="source-group">' +
+          '<div class="source-group-header">' + escHtml(key) + '</div>' +
+          cards + '</div>';
+      }).join('');
+    }
+
+    function renderCard(r) {
+      const icon = { news: '📰', analysis: '📊', social: '💬', custom: '⚙️' };
+      const catIcon = icon[r.source.category] || '📰';
+      return (
+        '<div class="result-card" data-url="' + escAttr(r.url) + '">' +
+          '<div class="result-card-header">' +
+            '<span class="result-card-source">' + catIcon + ' ' + escHtml(r.source.name) + '</span>' +
+            '<span class="result-card-date">' + escHtml(r.publishedDate || '') + '</span>' +
+          '</div>' +
+          '<div class="result-card-title">' + escHtml(r.title) + '</div>' +
+          '<div class="result-card-snippet">' + escHtml(r.content || '') + '</div>' +
+          '<div class="result-card-actions">' +
+            '<a href="' + escAttr(r.url) + '" target="_blank" rel="noopener">Open original</a>' +
+            '<button class="load-btn" data-url="' + escAttr(r.url) + '" onclick="toggleMarkdown(this)">Load content</button>' +
+          '</div>' +
+          '<div class="markdown-panel"></div>' +
+        '</div>'
+      );
+    }
+
+    function findTickerMatch(title, content) {
+      const text = (title + ' ' + content).toUpperCase();
+      const searchTickers = loadedSearchTickers || [];
+      for (const t of searchTickers) {
+        if (text.includes(t)) return t;
+      }
+      return searchTickers[0] || 'Other';
+    }
+
+    function setViewMode(mode) {
+      currentView = mode;
+      document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === mode);
+      });
+      if (lastSearchData) renderResults(lastSearchData);
+    }
+
+    function renderPanel(panel, data) {
+      if (rawMarkdownChecked) {
+        panel.innerHTML = '<pre class="raw-markdown">' + escHtml(data.markdown || '') + '</pre>';
+      } else {
+        panel.innerHTML = DOMPurify.sanitize(marked.parse(data.markdown || ''));
+      }
+    }
+
+    async function toggleMarkdown(btn) {
+      const url = btn.dataset.url;
+      const panel = btn.closest('.result-card').querySelector('.markdown-panel');
+
+      if (loadedMarkdown.has(url)) {
+        const isOpen = panel.classList.toggle('open');
+        btn.textContent = isOpen ? 'Hide content' : 'Show content';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Loading...';
+
+      try {
+        const resp = await fetch('/api/markdown?url=' + encodeURIComponent(url));
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Conversion failed');
+
+        loadedMarkdown.set(url, data);
+        renderPanel(panel, data);
+        panel.classList.add('open');
+        btn.textContent = 'Hide content';
+        btn.classList.add('loaded');
+      } catch (err) {
+        btn.textContent = 'Retry';
+        panel.innerHTML = '<span class="error">' + escHtml(err.message) + '</span>';
+        panel.classList.add('open');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
