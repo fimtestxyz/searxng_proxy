@@ -1,0 +1,16 @@
+{
+  "news": [
+    { "name": "Bloomberg", "domain": "bloomberg.com", "engine": "bing_news" },
+    { "name": "CNA", "domain": "cna.com.sg", "engine": "bing_news" },
+    { "name": "Business Times", "domain": "businesstimes.com.sg", "engine": "bing_news" }
+  ],
+  "analysis": [
+    { "name": "Finviz", "domain": "finviz.com", "engine": "google" },
+    { "name": "TradingView", "domain": "tradingview.com", "engine": "google" }
+  ],
+  "social": [
+    { "name": "Reddit", "domain": "reddit.com", "engine": "reddit" },
+    { "name": "X (Twitter)", "domain": "x.com", "engine": "google" }
+  ],
+  "custom": []
+}
