@@ -190,6 +190,13 @@
     @media (prefers-color-scheme: dark) {
       .toggle-track { background: #444; }
     }
+
+    /* Responsive layout */
+    @media (max-width: 600px) {
+      .source-filters { flex-direction: column; gap: 8px; }
+      .result-card-header { flex-direction: column; gap: 2px; }
+      .result-card-actions { flex-direction: column; gap: 4px; }
+    }
   </style>
 </head>
 <body>
