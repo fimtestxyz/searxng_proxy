@@ -124,26 +124,30 @@ app.get('/api/trader/search', async (req, res) => {
   const timeRange = mapTimeWindow(timeWindow);
   const t0 = Date.now();
 
-  const tasks = sources.map(async (src) => {
-    const category = src.category || 'news';
-    const results = await searchSearXNG(searxng, tickers, src.domain, src.engine, timeRange, category).catch(() => []);
-    return {
-      source: { name: src.name, domain: src.domain, category },
-      results,
-    };
-  });
+  try {
+    const tasks = sources.filter(s => typeof s === 'object' && s !== null).map(async (src) => {
+      const category = src.category || 'news';
+      const results = await searchSearXNG(searxng, tickers, src.domain, src.engine, timeRange, category).catch(() => []);
+      return {
+        source: { name: src.name, domain: src.domain, category },
+        results,
+      };
+    });
 
-  const grouped = await Promise.all(tasks);
-  const elapsed = Date.now() - t0;
+    const grouped = await Promise.all(tasks);
+    const elapsed = Date.now() - t0;
 
-  res.json({
-    tickers,
-    time_window: timeWindow,
-    time_range_label: timeWindow === '1h' ? '1 day' : `${timeWindow}`,
-    count: grouped.reduce((sum, g) => sum + g.results.length, 0),
-    grouped,
-    elapsed_ms: elapsed,
-  });
+    res.json({
+      tickers,
+      time_window: timeWindow,
+      time_range_label: timeWindow === '1h' ? '1 day' : `${timeWindow}`,
+      count: grouped.reduce((sum, g) => sum + g.results.length, 0),
+      grouped,
+      elapsed_ms: elapsed,
+    });
+  } catch (err) {
+    res.status(502).json({ error: 'Trader search failed', detail: err.message });
+  }
 });
 
 app.get('/api/trader/sources', (_req, res) => {
