@@ -3,257 +3,763 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trader — Stock News Search</title>
+  <title>TRADER // MARKET NEWS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
   <style>
+    :root {
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #111111;
+      --bg-card: #161616;
+      --bg-input: #0d0d0d;
+      --border-subtle: #1e1e1e;
+      --border-active: #c8a44e;
+      --text-primary: #e8e0d0;
+      --text-secondary: #8a8278;
+      --text-muted: #4a4640;
+      --amber: #c8a44e;
+      --amber-dim: #8a7335;
+      --amber-glow: rgba(200, 164, 78, 0.15);
+      --green: #5cb85c;
+      --green-dim: #2d5a2d;
+      --red: #c0392b;
+      --accent-news: #c8a44e;
+      --accent-analysis: #5cb85c;
+      --accent-social: #4a90d9;
+      --accent-custom: #9b59b6;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-      max-width: 900px; margin: 0 auto; padding: 24px 16px;
-      background: #fff; color: #1a1a1a;
-    }
-    @media (prefers-color-scheme: dark) {
-      body { background: #0f0f0f; color: #e0e0e0; }
+      font-family: 'IBM Plex Sans', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      position: relative;
     }
 
-    header { margin-bottom: 20px; }
-    header h1 { font-size: 1.4rem; margin-bottom: 12px; font-weight: 600; }
+    /* Scanline overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(255,255,255,0.008) 2px,
+        rgba(255,255,255,0.008) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
 
-    /* Ticker pills */
-    .ticker-input-area { display: flex; flex-direction: column; gap: 6px; }
-    .ticker-pills { display: flex; flex-wrap: wrap; gap: 2px; }
+    /* Grain texture */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9998;
+    }
+
+    .terminal-frame {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px 24px 60px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Header ── */
+    .terminal-header {
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+
+    .terminal-title {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--amber);
+    }
+
+    .terminal-title::before {
+      content: '■';
+      margin-right: 8px;
+      animation: blink 1.2s step-end infinite;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+
+    .terminal-subtitle {
+      font-family: 'Instrument Serif', serif;
+      font-size: 1.6rem;
+      font-style: italic;
+      color: var(--text-secondary);
+      margin-top: 2px;
+      font-weight: 400;
+    }
+
+    .terminal-status {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .terminal-status .dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    /* ── Input Section ── */
+    .input-section {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: 2px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .input-row {
+      margin-bottom: 16px;
+    }
+    .input-row:last-child { margin-bottom: 0; }
+
+    .input-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    /* Ticker input */
+    .ticker-input-area { display: flex; flex-direction: column; gap: 8px; }
+
+    .ticker-pills { display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px; }
+
     .ticker-pill {
-      display: inline-flex; align-items: center; gap: 4px;
-      padding: 4px 10px; background: #e8f0fe; border-radius: 16px;
-      font-size: 0.88rem; font-weight: 500; margin: 2px;
-    }
-    .ticker-pill button {
-      background: none; border: none; cursor: pointer;
-      font-size: 1.1rem; color: #666; padding: 0 2px;
-    }
-    @media (prefers-color-scheme: dark) {
-      .ticker-pill { background: #2a3a5a; }
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: var(--amber-glow);
+      border: 1px solid var(--amber-dim);
+      border-radius: 2px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--amber);
+      letter-spacing: 0.08em;
+      animation: pillIn 0.2s ease-out;
     }
 
-    .search-input {
-      width: 100%; padding: 10px 14px; font-size: 1rem;
-      border: 1px solid #ddd; border-radius: 6px; outline: none;
+    @keyframes pillIn {
+      from { transform: scale(0.8); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
     }
-    .search-input:focus { border-color: #4a90d9; }
-    @media (prefers-color-scheme: dark) {
-      .search-input { background: #1a1a1a; border-color: #333; color: #e0e0e0; }
+
+    .ticker-pill button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1.1rem;
+      color: var(--amber-dim);
+      padding: 0 2px;
+      line-height: 1;
+      opacity: 0.5;
+      transition: opacity 0.15s;
     }
+    .ticker-pill button:hover { opacity: 1; }
+
+    .ticker-input {
+      width: 100%;
+      padding: 10px 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      letter-spacing: 0.05em;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: 2px;
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .ticker-input::placeholder { color: var(--text-muted); }
+    .ticker-input:focus { border-color: var(--amber-dim); }
 
     /* Time window */
-    .time-window-selector { display: flex; gap: 4px; flex-wrap: wrap; margin: 8px 0; }
-    .tw-option { cursor: pointer; }
+    .time-window-bar {
+      display: flex;
+      gap: 2px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .tw-option {
+      flex: 1;
+      cursor: pointer;
+    }
     .tw-option input { display: none; }
     .tw-option span {
-      display: block; padding: 6px 14px; border: 1px solid #ddd;
-      border-radius: 6px; font-size: 0.9rem;
+      display: block;
+      padding: 8px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-align: center;
+      letter-spacing: 0.08em;
+      transition: all 0.15s;
+      border-right: 1px solid var(--border-subtle);
     }
+    .tw-option:last-child span { border-right: none; }
     .tw-option input:checked + span {
-      background: #4a90d9; color: #fff; border-color: #4a90d9;
+      background: var(--amber);
+      color: var(--bg-primary);
     }
-    @media (prefers-color-scheme: dark) {
-      .tw-option span { border-color: #333; color: #ccc; background: #1a1a1a; }
-      .tw-option input:checked + span { background: #4a90d9; color: #fff; }
-    }
+    .tw-option span:hover { color: var(--text-primary); background: rgba(255,255,255,0.02); }
 
     /* Source filters */
-    .source-filters { display: flex; flex-wrap: wrap; gap: 16px; margin: 8px 0; }
-    .source-category h4 { font-size: 0.85rem; margin-bottom: 4px; color: #666; }
+    .source-filters { display: flex; flex-wrap: wrap; gap: 20px; }
+
+    .source-category h4 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
     .source-label {
-      display: inline-flex; align-items: center; gap: 4px;
-      margin-right: 12px; font-size: 0.88rem; cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-right: 14px;
+      margin-bottom: 4px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      color: var(--text-secondary);
+      transition: color 0.15s;
     }
-    .source-label span {
-      padding: 3px 8px; border: 1px solid #ddd; border-radius: 4px;
+    .source-label:hover { color: var(--text-primary); }
+
+    .source-label input[type="checkbox"] {
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border: 1px solid var(--border-subtle);
+      border-radius: 1px;
+      background: var(--bg-input);
+      cursor: pointer;
+      position: relative;
+      transition: all 0.15s;
     }
-    .source-label input:checked + span {
-      background: #e8f5e9; border-color: #81c784; color: #2e7d32;
+    .source-label input[type="checkbox"]:checked {
+      background: var(--amber);
+      border-color: var(--amber);
     }
-    @media (prefers-color-scheme: dark) {
-      .source-label span { border-color: #333; background: #1a1a1a; }
-      .source-label input:checked + span { background: #1b3a1b; border-color: #4caf50; color: #81c784; }
+    .source-label input[type="checkbox"]:checked::after {
+      content: '✓';
+      position: absolute;
+      top: -1px;
+      left: 1px;
+      font-size: 11px;
+      color: var(--bg-primary);
+      font-weight: 700;
     }
 
-    /* Buttons */
+    /* Search button */
     .search-btn {
-      padding: 10px 20px; font-size: 1rem; border: none; border-radius: 6px;
-      background: #4a90d9; color: #fff; cursor: pointer; font-weight: 500; margin: 8px 0;
+      padding: 10px 28px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      border: 1px solid var(--amber);
+      background: transparent;
+      color: var(--amber);
+      cursor: pointer;
+      border-radius: 2px;
+      transition: all 0.2s;
     }
-    .search-btn:hover { background: #3a7fc9; }
-    .search-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .search-btn:hover {
+      background: var(--amber);
+      color: var(--bg-primary);
+    }
+    .search-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
 
-    /* Status */
-    .status-text { font-size: 0.85rem; color: #888; margin: 12px 0 16px; }
-    .error { color: #d32f2f; margin: 12px 0; }
-    @media (prefers-color-scheme: dark) { .error { color: #ff6b6b; } }
+    /* Toggles row */
+    .controls-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
 
-    /* Spinner */
+    .toggle-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .toggle-track {
+      width: 32px;
+      height: 16px;
+      border-radius: 8px;
+      background: var(--border-subtle);
+      position: relative;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      transition: all 0.2s;
+    }
+    .toggle-input { display: none; }
+    .toggle-input:checked + .toggle-track { background: var(--amber-dim); }
+    .toggle-input:checked + .toggle-track::after {
+      transform: translateX(16px);
+      background: var(--amber);
+    }
+
+    /* ── Status Bar ── */
+    .status-bar {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-subtle);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-bar .count { color: var(--amber); font-weight: 600; }
+    .status-bar .elapsed { color: var(--green); }
+    .error { color: var(--red) !important; }
+
+    /* ── View Toggle ── */
+    .view-toggle {
+      display: flex;
+      gap: 0;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .view-btn {
+      padding: 8px 16px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .view-btn:hover { color: var(--text-secondary); }
+    .view-btn.active {
+      color: var(--amber);
+      border-bottom-color: var(--amber);
+    }
+
+    /* ── Results ── */
+    .ticker-group, .source-group {
+      margin-bottom: 24px;
+      animation: fadeUp 0.3s ease-out;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .ticker-group-header, .source-group-header {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--amber);
+      padding: 10px 0 8px;
+      border-bottom: 1px solid var(--border-subtle);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .ticker-group-header::before {
+      content: '//';
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .source-group-header::before {
+      content: '◆';
+      color: var(--green);
+      font-size: 0.6rem;
+    }
+
+    /* ── Result Cards ── */
+    .result-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-left: 2px solid var(--text-muted);
+      border-radius: 2px;
+      padding: 14px 16px;
+      margin-bottom: 8px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .result-card:hover {
+      border-left-color: var(--amber);
+      background: #1a1a1a;
+    }
+
+    .result-card[data-source-cat="news"] { border-left-color: var(--accent-news); }
+    .result-card[data-source-cat="analysis"] { border-left-color: var(--accent-analysis); }
+    .result-card[data-source-cat="social"] { border-left-color: var(--accent-social); }
+    .result-card[data-source-cat="custom"] { border-left-color: var(--accent-custom); }
+    .result-card:hover { border-left-color: var(--amber); }
+
+    .result-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .result-card-source {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .source-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+    .source-dot.news { background: var(--accent-news); }
+    .source-dot.analysis { background: var(--accent-analysis); }
+    .source-dot.social { background: var(--accent-social); }
+    .source-dot.custom { background: var(--accent-custom); }
+
+    .result-card-date {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+
+    .result-card-title {
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 500;
+      line-height: 1.45;
+      margin-bottom: 6px;
+    }
+    .result-card-title a {
+      color: var(--text-primary);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .result-card-title a:hover { color: var(--amber); }
+
+    .result-card-snippet {
+      font-size: 0.85rem;
+      line-height: 1.55;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .result-card-actions {
+      display: flex;
+      gap: 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .result-card-actions a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .result-card-actions a:hover { color: var(--amber); }
+
+    .load-btn {
+      background: none;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      padding: 4px 10px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: 1px;
+      transition: all 0.15s;
+    }
+    .load-btn:hover { border-color: var(--amber-dim); color: var(--text-secondary); }
+    .load-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .load-btn.loaded {
+      border-color: var(--green-dim);
+      color: var(--green);
+    }
+
+    /* ── Markdown Panel ── */
+    .markdown-panel {
+      margin-top: 12px;
+      padding: 16px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: 2px;
+      max-height: 500px;
+      overflow-y: auto;
+      display: none;
+      font-size: 0.9rem;
+      line-height: 1.7;
+    }
+    .markdown-panel.open { display: block; }
+    .markdown-panel h1, .markdown-panel h2, .markdown-panel h3 {
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-weight: 600;
+      margin: 16px 0 8px;
+      color: var(--text-primary);
+    }
+    .markdown-panel h1 { font-size: 1.2rem; }
+    .markdown-panel h2 { font-size: 1.05rem; }
+    .markdown-panel h3 { font-size: 0.95rem; }
+    .markdown-panel p { margin: 8px 0; }
+    .markdown-panel a { color: var(--amber); }
+    .markdown-panel pre {
+      background: #0d0d0d;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      padding: 14px;
+      border-radius: 2px;
+      overflow-x: auto;
+      margin: 10px 0;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.82rem;
+      line-height: 1.6;
+    }
+    .markdown-panel code {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.82em;
+      background: rgba(255,255,255,0.04);
+      padding: 1px 5px;
+      border-radius: 2px;
+    }
+    .markdown-panel ul, .markdown-panel ol { padding-left: 20px; margin: 8px 0; }
+    .markdown-panel li { margin: 4px 0; }
+    .markdown-panel blockquote {
+      border-left: 2px solid var(--amber-dim);
+      padding-left: 14px;
+      margin: 10px 0;
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+    .markdown-panel img { max-width: 100%; border-radius: 2px; }
+    .markdown-panel pre.raw-markdown {
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: transparent;
+      border: none;
+      padding: 0;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      line-height: 1.7;
+    }
+
+    /* ── Spinner ── */
     .spinner {
-      display: inline-block; width: 12px; height: 12px;
-      border: 2px solid #ccc; border-top-color: #666; border-radius: 50%;
-      animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 4px;
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border: 1.5px solid var(--text-muted);
+      border-top-color: var(--amber);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* View toggle */
-    .results-toolbar { margin: 8px 0; }
-    .view-toggle { display: flex; gap: 4px; }
-    .view-btn {
-      padding: 4px 12px; border: 1px solid #ddd; border-radius: 4px;
-      background: #f5f5f5; cursor: pointer; font-size: 0.85rem;
-    }
-    .view-btn.active { background: #4a90d9; color: #fff; border-color: #4a90d9; }
-    @media (prefers-color-scheme: dark) {
-      .view-btn { border-color: #333; background: #1a1a1a; color: #ccc; }
+    /* ── No Results ── */
+    .no-results {
+      text-align: center;
+      color: var(--text-muted);
+      padding: 60px 0;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
     }
 
-    /* Result groups */
-    .ticker-group, .source-group { margin-bottom: 16px; }
-    .ticker-group-header, .source-group-header {
-      font-size: 1rem; font-weight: 600; padding: 8px 0;
-      border-bottom: 2px solid #4a90d9; margin-bottom: 8px;
-    }
-    .result-card {
-      border: 1px solid #e8e8e8; border-radius: 8px; padding: 14px; margin-bottom: 10px;
-    }
-    .result-card-header {
-      display: flex; justify-content: space-between;
-      font-size: 0.82rem; color: #888; margin-bottom: 6px;
-    }
-    .result-card-source { font-weight: 500; color: #555; }
-    .result-card-title {
-      font-size: 0.95rem; font-weight: 600; margin-bottom: 4px;
-    }
-    .result-card-title a { color: inherit; text-decoration: none; }
-    .result-card-title a:hover { text-decoration: underline; }
-    .result-card-snippet {
-      font-size: 0.88rem; line-height: 1.5; color: inherit;
-      opacity: 0.85; margin-bottom: 8px;
-    }
-    .result-card-actions {
-      display: flex; gap: 8px; font-size: 0.82rem; align-items: center;
-    }
-    .result-card-actions a { color: #1a73e8; }
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
-    .no-results { text-align: center; color: #888; padding: 40px 0; }
-
-    .load-btn {
-      font-size: 0.82rem; padding: 5px 12px; border-radius: 4px;
-      border: 1px solid #ccc; background: #f5f5f5; cursor: pointer;
-    }
-    .load-btn:hover { background: #eee; }
-    .load-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .load-btn.loaded { background: #e8f5e9; border-color: #81c784; color: #2e7d32; }
-    @media (prefers-color-scheme: dark) {
-      .result-card { border-color: #2a2a2a; background: #1a1a1a; }
-      .load-btn { background: #1a1a1a; border-color: #444; color: #ccc; }
-      .load-btn:hover { background: #2a2a2a; }
-      .load-btn.loaded { background: #1b3a1b; border-color: #4caf50; color: #81c784; }
-    }
-
-    .markdown-panel {
-      margin-top: 10px; padding: 12px; border-radius: 6px;
-      background: #f8f8f8; border: 1px solid #e0e0e0;
-      max-height: 400px; overflow-y: auto; display: none;
-    }
-    .markdown-panel.open { display: block; }
-    .markdown-panel h1, .markdown-panel h2, .markdown-panel h3 { margin: 12px 0 6px; }
-    .markdown-panel p { margin: 6px 0; line-height: 1.6; }
-    .markdown-panel pre { background: #272822; color: #f8f8f2; padding: 12px; border-radius: 4px; overflow-x: auto; margin: 8px 0; }
-    .markdown-panel code { font-family: 'SF Mono', Menlo, monospace; font-size: 0.88em; }
-    .markdown-panel ul, .markdown-panel ol { padding-left: 24px; margin: 8px 0; }
-    .markdown-panel a { color: #1a73e8; }
-    .markdown-panel img { max-width: 100%; }
-    .markdown-panel blockquote { border-left: 3px solid #ccc; padding-left: 12px; margin: 8px 0; opacity: 0.8; }
-    .markdown-panel pre.raw-markdown {
-      white-space: pre-wrap; word-break: break-word;
-      background: transparent; color: inherit; padding: 0; margin: 0;
-      font-size: 0.88rem; line-height: 1.6;
-    }
-    @media (prefers-color-scheme: dark) {
-      .markdown-panel { background: #1a1a1a; border-color: #333; }
-    }
-
-    .auto-toggle { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; font-size: 0.85rem; color: #888; margin: 8px 0; }
-    .auto-toggle label { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px; }
-    .toggle-track { width: 36px; height: 20px; border-radius: 10px; background: #ccc; position: relative; transition: background 0.2s; flex-shrink: 0; }
-    .toggle-track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 0.2s; }
-    .toggle-input { display: none; }
-    .toggle-input:checked + .toggle-track { background: #4a90d9; }
-    .toggle-input:checked + .toggle-track::after { transform: translateX(16px); }
-    @media (prefers-color-scheme: dark) {
-      .toggle-track { background: #444; }
-    }
-
-    /* Responsive layout */
+    /* ── Responsive ── */
     @media (max-width: 600px) {
-      .source-filters { flex-direction: column; gap: 8px; }
-      .result-card-header { flex-direction: column; gap: 2px; }
-      .result-card-actions { flex-direction: column; gap: 4px; }
+      .terminal-frame { padding: 12px 12px 40px; }
+      .source-filters { gap: 12px; }
+      .result-card-header { flex-direction: column; gap: 4px; }
+      .result-card-actions { flex-direction: column; gap: 6px; }
+      .tw-option span { padding: 6px 8px; font-size: 0.72rem; }
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Trader &mdash; Stock News Search</h1>
-    <div class="ticker-input-area">
-      <div class="ticker-pills" id="tickerPills"></div>
-      <input class="search-input" id="tickerSearchInput" type="text" placeholder="Enter ticker and press Enter..." autocomplete="off">
-    </div>
-    <div class="time-window-selector" id="timeWindowSelector">
-      <label class="tw-option"><input type="radio" name="tw" value="1d" checked><span>1d</span></label>
-      <label class="tw-option"><input type="radio" name="tw" value="3d"><span>3d</span></label>
-      <label class="tw-option"><input type="radio" name="tw" value="5d"><span>5d</span></label>
-      <label class="tw-option"><input type="radio" name="tw" value="1m"><span>1m</span></label>
-      <label class="tw-option"><input type="radio" name="tw" value="3m"><span>3m</span></label>
-    </div>
-    <div class="source-filters" id="sourceFilters">
-      <div class="source-category" data-category="news">
-        <h4>&#128214; News</h4>
-        <div class="source-checkboxes"></div>
+  <div class="terminal-frame">
+    <header class="terminal-header">
+      <div>
+        <div class="terminal-title">Market News Search</div>
+        <div class="terminal-subtitle">SearXNG Trader</div>
       </div>
-      <div class="source-category" data-category="analysis">
-        <h4>&#128202; Analysis</h4>
-        <div class="source-checkboxes"></div>
-      </div>
-      <div class="source-category" data-category="social">
-        <h4>&#128172; Social</h4>
-        <div class="source-checkboxes"></div>
-      </div>
-      <div class="source-category" data-category="custom">
-        <h4>&#9881; Custom</h4>
-        <div class="source-checkboxes"></div>
-      </div>
-    </div>
-    <button class="search-btn" id="traderSearchBtn" type="button">Search</button>
-    <div class="auto-toggle">
-      <label>
-        <input type="checkbox" class="toggle-input" id="autoLoadToggle">
-        <span class="toggle-track"></span>
-        Auto-load content
-      </label>
-      <label>
-        <input type="checkbox" class="toggle-input" id="rawMarkdownToggle">
-        <span class="toggle-track"></span>
-        Raw markdown
-      </label>
-    </div>
-  </header>
+      <div class="terminal-status"><span class="dot"></span>connected</div>
+    </header>
 
-  <div id="traderStatus"></div>
-  <div class="results-toolbar">
+    <div class="input-section">
+      <!-- Tickers -->
+      <div class="input-row">
+        <label class="input-label">Tickers</label>
+        <div class="ticker-input-area">
+          <div class="ticker-pills" id="tickerPills"></div>
+          <input class="ticker-input" id="tickerSearchInput" type="text" placeholder="AAPL" autocomplete="off">
+        </div>
+      </div>
+
+      <!-- Time Window -->
+      <div class="input-row">
+        <label class="input-label">Time Window</label>
+        <div class="time-window-bar" id="timeWindowSelector">
+          <label class="tw-option"><input type="radio" name="tw" value="1d" checked><span>1D</span></label>
+          <label class="tw-option"><input type="radio" name="tw" value="3d"><span>3D</span></label>
+          <label class="tw-option"><input type="radio" name="tw" value="5d"><span>5D</span></label>
+          <label class="tw-option"><input type="radio" name="tw" value="1m"><span>1M</span></label>
+          <label class="tw-option"><input type="radio" name="tw" value="3m"><span>3M</span></label>
+        </div>
+      </div>
+
+      <!-- Sources -->
+      <div class="input-row">
+        <label class="input-label">Sources</label>
+        <div class="source-filters" id="sourceFilters">
+          <div class="source-category" data-category="news">
+            <h4>News</h4>
+            <div class="source-checkboxes"></div>
+          </div>
+          <div class="source-category" data-category="analysis">
+            <h4>Analysis</h4>
+            <div class="source-checkboxes"></div>
+          </div>
+          <div class="source-category" data-category="social">
+            <h4>Social</h4>
+            <div class="source-checkboxes"></div>
+          </div>
+          <div class="source-category" data-category="custom">
+            <h4>Custom</h4>
+            <div class="source-checkboxes"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="input-row" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+        <button class="search-btn" id="traderSearchBtn" type="button">SEARCH</button>
+        <div class="controls-row" style="margin-top:0;">
+          <label class="toggle-item">
+            <input type="checkbox" class="toggle-input" id="autoLoadToggle">
+            <span class="toggle-track"></span>
+            Auto-load
+          </label>
+          <label class="toggle-item">
+            <input type="checkbox" class="toggle-input" id="rawMarkdownToggle">
+            <span class="toggle-track"></span>
+            Raw MD
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status -->
+    <div id="traderStatus"></div>
+
+    <!-- View Toggle -->
     <div class="view-toggle">
       <button class="view-btn active" data-view="ticker" onclick="setViewMode('ticker')">By Ticker</button>
       <button class="view-btn" data-view="source" onclick="setViewMode('source')">By Source</button>
     </div>
+
+    <!-- Results -->
+    <div id="traderResults"></div>
   </div>
-  <div id="traderResults"></div>
 
   <script>
     const tickers = [];
@@ -262,6 +768,7 @@
     let loadedSearchTickers = [];
     let allSourcesFlat = {};
     let lastSearchData = null;
+    let rawMarkdownChecked = false;
 
     const tickerSearchInput = document.getElementById('tickerSearchInput');
     const traderSearchBtn = document.getElementById('traderSearchBtn');
@@ -275,6 +782,7 @@
       return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
 
+    // ── Ticker Input ──
     tickerSearchInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         const val = e.target.value.trim().toUpperCase();
@@ -289,7 +797,7 @@
     function renderPills() {
       const container = document.getElementById('tickerPills');
       container.innerHTML = tickers.map(t =>
-        `<span class="ticker-pill">${escHtml(t)}<button onclick="removeTicker('${escAttr(t)}')">&times;</button></span>`
+        '<span class="ticker-pill">' + escHtml(t) + '<button onclick="removeTicker(\'' + escAttr(t) + '\')">&times;</button></span>'
       ).join('');
     }
 
@@ -298,15 +806,14 @@
       renderPills();
     }
 
-    let rawMarkdownChecked = false;
-
+    // ── Toggles ──
     const autoLoadToggle = document.getElementById('autoLoadToggle');
     const rawMarkdownToggle = document.getElementById('rawMarkdownToggle');
 
     rawMarkdownToggle.addEventListener('change', () => {
       rawMarkdownChecked = rawMarkdownToggle.checked;
       loadedMarkdown.forEach((data, url) => {
-        const card = document.querySelector(`.result-card[data-url="${CSS.escape(url)}"]`);
+        const card = document.querySelector('.result-card[data-url="' + CSS.escape(url) + '"]');
         if (card) {
           const panel = card.querySelector('.markdown-panel');
           if (panel) renderPanel(panel, data);
@@ -319,7 +826,7 @@
         const buttons = [...document.querySelectorAll('.load-btn:not(.loaded)')];
         if (buttons.length > 0) {
           const urls = buttons.map(b => b.dataset.url);
-          buttons.forEach(btn => { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Loading...'; });
+          buttons.forEach(btn => { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> LOADING'; });
           fetch('/api/markdown/batch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -328,30 +835,31 @@
             data.results.forEach((result, i) => {
               const btn = buttons[i];
               const panel = btn.closest('.result-card')?.querySelector('.markdown-panel');
-              if (result.error) { btn.textContent = 'Retry'; btn.disabled = false; return; }
+              if (result.error) { btn.textContent = 'RETRY'; btn.disabled = false; return; }
               loadedMarkdown.set(result.url, result);
               renderPanel(panel, result);
               panel.classList.add('open');
-              btn.textContent = 'Hide content';
+              btn.textContent = 'HIDDEN';
               btn.classList.add('loaded');
               btn.disabled = false;
             });
-          }).catch(err => {
-            buttons.forEach(btn => { btn.textContent = 'Retry'; btn.disabled = false; });
+          }).catch(() => {
+            buttons.forEach(btn => { btn.textContent = 'RETRY'; btn.disabled = false; });
           });
         }
       }
     });
 
+    // ── Load Sources ──
     async function loadSources() {
       try {
         const resp = await fetch('/api/trader/sources');
         const sources = await resp.json();
         for (const [category, items] of Object.entries(sources)) {
-          const container = document.querySelector(`.source-category[data-category="${category}"] .source-checkboxes`);
+          const container = document.querySelector('.source-category[data-category="' + category + '"] .source-checkboxes');
           if (!container) continue;
           items.forEach((src, i) => {
-            const key = `${category}:${i}`;
+            const key = category + ':' + i;
             allSourcesFlat[key] = { ...src, category };
             const label = document.createElement('label');
             label.className = 'source-label';
@@ -367,6 +875,7 @@
     }
     loadSources();
 
+    // ── Search ──
     traderSearchBtn.addEventListener('click', performTraderSearch);
 
     async function performTraderSearch() {
@@ -377,9 +886,11 @@
 
       const timeWindow = document.querySelector('#timeWindowSelector input:checked').value;
 
-      traderStatus.innerHTML = '<span class="spinner"></span> Searching...';
+      traderStatus.innerHTML = '<span class="spinner"></span> QUERYING SOURCES...';
       traderResults.innerHTML = '';
       loadedMarkdown.clear();
+      traderSearchBtn.disabled = true;
+      traderSearchBtn.textContent = 'SEARCHING...';
 
       try {
         const resp = await fetch(
@@ -392,17 +903,22 @@
         if (!resp.ok) throw new Error(data.error || 'Search failed');
 
         traderStatus.innerHTML =
-          escHtml(data.tickers.join(', ')) + ' &mdash; ' +
-          escHtml(data.time_range_label) + ' &mdash; ' +
-          data.count + ' results in ' + data.elapsed_ms + 'ms';
+          '<span class="count">' + escHtml(data.tickers.join(', ')) + '</span>' +
+          ' &nbsp;/&nbsp; ' + escHtml(data.time_range_label) +
+          ' &nbsp;/&nbsp; <span class="count">' + data.count + '</span> RESULTS' +
+          ' &nbsp;/&nbsp; <span class="elapsed">' + data.elapsed_ms + 'ms</span>';
         loadedSearchTickers = [...tickers];
         lastSearchData = data;
         renderResults(data);
       } catch (err) {
-        traderStatus.innerHTML = '<span class="error">' + escHtml(err.message) + '</span>';
+        traderStatus.innerHTML = '<span class="error">ERR: ' + escHtml(err.message) + '</span>';
+      } finally {
+        traderSearchBtn.disabled = false;
+        traderSearchBtn.textContent = 'SEARCH';
       }
     }
 
+    // ── Render ──
     function renderResults(data) {
       const container = document.getElementById('traderResults');
       const results = data.grouped.flatMap(g =>
@@ -410,7 +926,7 @@
       );
 
       if (results.length === 0) {
-        container.innerHTML = '<p class="no-results">No results found.</p>';
+        container.innerHTML = '<p class="no-results">NO RESULTS FOUND</p>';
         return;
       }
 
@@ -429,9 +945,9 @@
         byTicker[ticker].push(r);
       });
 
-      container.innerHTML = Object.keys(byTicker).map(ticker => {
+      container.innerHTML = Object.keys(byTicker).map(function(ticker, idx) {
         const cards = byTicker[ticker].map(r => renderCard(r)).join('');
-        return '<div class="ticker-group">' +
+        return '<div class="ticker-group" style="animation-delay:' + (idx * 0.05) + 's">' +
           '<div class="ticker-group-header">' + escHtml(ticker) + '</div>' +
           cards + '</div>';
       }).join('');
@@ -445,28 +961,29 @@
         bySource[key].push(r);
       });
 
-      container.innerHTML = Object.keys(bySource).map(key => {
+      container.innerHTML = Object.keys(bySource).map(function(key, idx) {
         const cards = bySource[key].map(r => renderCard(r)).join('');
-        return '<div class="source-group">' +
+        return '<div class="source-group" style="animation-delay:' + (idx * 0.05) + 's">' +
           '<div class="source-group-header">' + escHtml(key) + '</div>' +
           cards + '</div>';
       }).join('');
     }
 
     function renderCard(r) {
-      const icon = { news: '📰', analysis: '📊', social: '💬', custom: '⚙️' };
-      const catIcon = icon[r.source.category] || '📰';
       return (
-        '<div class="result-card" data-url="' + escAttr(r.url) + '">' +
+        '<div class="result-card" data-url="' + escAttr(r.url) + '" data-source-cat="' + escAttr(r.source.category) + '">' +
           '<div class="result-card-header">' +
-            '<span class="result-card-source">' + catIcon + ' ' + escHtml(r.source.name) + '</span>' +
+            '<span class="result-card-source">' +
+              '<span class="source-dot ' + escAttr(r.source.category) + '"></span>' +
+              escHtml(r.source.name) +
+            '</span>' +
             '<span class="result-card-date">' + escHtml(r.publishedDate || '') + '</span>' +
           '</div>' +
-          '<div class="result-card-title">' + escHtml(r.title) + '</div>' +
+          '<div class="result-card-title"><a href="' + escAttr(r.url) + '" target="_blank" rel="noopener">' + escHtml(r.title) + '</a></div>' +
           '<div class="result-card-snippet">' + escHtml(r.content || '') + '</div>' +
           '<div class="result-card-actions">' +
-            '<a href="' + escAttr(r.url) + '" target="_blank" rel="noopener">Open original</a>' +
-            '<button class="load-btn" data-url="' + escAttr(r.url) + '" onclick="toggleMarkdown(this)">Load content</button>' +
+            '<a href="' + escAttr(r.url) + '" target="_blank" rel="noopener">OPEN ORIGINAL</a>' +
+            '<button class="load-btn" data-url="' + escAttr(r.url) + '" onclick="toggleMarkdown(this)">LOAD CONTENT</button>' +
           '</div>' +
           '<div class="markdown-panel"></div>' +
         '</div>'
@@ -479,7 +996,7 @@
       for (const t of searchTickers) {
         if (text.includes(t)) return t;
       }
-      return searchTickers[0] || 'Other';
+      return searchTickers[0] || 'OTHER';
     }
 
     function setViewMode(mode) {
@@ -490,6 +1007,7 @@
       if (lastSearchData) renderResults(lastSearchData);
     }
 
+    // ── Markdown ──
     function renderPanel(panel, data) {
       if (rawMarkdownChecked) {
         panel.innerHTML = '<pre class="raw-markdown">' + escHtml(data.markdown || '') + '</pre>';
@@ -500,16 +1018,17 @@
 
     async function toggleMarkdown(btn) {
       const url = btn.dataset.url;
-      const panel = btn.closest('.result-card').querySelector('.markdown-panel');
+      const card = btn.closest('.result-card');
+      const panel = card.querySelector('.markdown-panel');
 
       if (loadedMarkdown.has(url)) {
         const isOpen = panel.classList.toggle('open');
-        btn.textContent = isOpen ? 'Hide content' : 'Show content';
+        btn.textContent = isOpen ? 'HIDDEN' : 'LOAD CONTENT';
         return;
       }
 
       btn.disabled = true;
-      btn.innerHTML = '<span class="spinner"></span> Loading...';
+      btn.innerHTML = '<span class="spinner"></span> LOADING';
 
       try {
         const resp = await fetch('/api/markdown?url=' + encodeURIComponent(url));
@@ -519,11 +1038,11 @@
         loadedMarkdown.set(url, data);
         renderPanel(panel, data);
         panel.classList.add('open');
-        btn.textContent = 'Hide content';
+        btn.textContent = 'HIDDEN';
         btn.classList.add('loaded');
       } catch (err) {
-        btn.textContent = 'Retry';
-        panel.innerHTML = '<span class="error">' + escHtml(err.message) + '</span>';
+        btn.textContent = 'RETRY';
+        panel.innerHTML = '<span class="error">ERR: ' + escHtml(err.message) + '</span>';
         panel.classList.add('open');
       } finally {
         btn.disabled = false;
