@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const { URL2MDClient } = require('./lib/url2md');
 const { SearXNGClient } = require('./lib/searxng');
 const { MarkdownCache } = require('./lib/cache');
