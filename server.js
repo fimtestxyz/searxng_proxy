@@ -1,31 +1,24 @@
 const express = require('express');
 const path = require('path');
+const config = require('./config');
+const { URL2MDClient } = require('./lib/url2md');
 const { SearXNGClient } = require('./lib/searxng');
 const { MarkdownCache } = require('./lib/cache');
 const { MarkdownConverter } = require('./lib/markdown');
 
-const URL2MD_PATH = process.env.URL2MD_PATH || '../url2md/src/api';
-let urlToMd;
-try {
-  urlToMd = require(path.resolve(__dirname, URL2MD_PATH)).urlToMd;
-} catch (err) {
-  console.error(`Failed to load url2md from: ${URL2MD_PATH}`);
-  console.error(`Set URL2MD_PATH env var to the correct path.`);
-  process.exit(1);
-}
-
 const { SourceManager, mapTimeWindow, searchSearXNG } = require('./lib/trader');
 const sourceManager = new SourceManager();
 
-const PORT = parseInt(process.env.PORT || '3000', 10);
-const MARKDOWN_CONCURRENCY = parseInt(process.env.MARKDOWN_CONCURRENCY || '3', 10);
+const PORT = config.port;
+const MARKDOWN_CONCURRENCY = config.markdown.concurrency;
 
-const searxng = new SearXNGClient();
+const searxng = new SearXNGClient(config.searxng.baseUrl);
+const url2md = new URL2MDClient(config.url2md.baseUrl);
 const cache = new MarkdownCache(
-  parseInt(process.env.CACHE_MAX_SIZE || '100', 10),
-  parseInt(process.env.CACHE_TTL_MS || '1800000', 10)
+  config.markdown.cache.maxSize,
+  config.markdown.cache.ttlMs
 );
-const converter = new MarkdownConverter(urlToMd, cache, MARKDOWN_CONCURRENCY);
+const converter = new MarkdownConverter(url2md, cache, MARKDOWN_CONCURRENCY);
 
 const KEEP_FIELDS = new Set(['url', 'title', 'content', 'engines', 'score', 'category']);
 
@@ -67,11 +60,14 @@ app.get('/api/search', async (req, res) => {
 
 app.get('/api/markdown', async (req, res) => {
   const url = req.query.url;
+   console.log(`!!!!! url=${url} `)
   if (!url || !url.trim()) {
     return res.status(400).json({ error: 'Missing or invalid url parameter' });
   }
   try {
     const result = await converter.convert(url);
+    //log url and result
+    console.log(`url=${url}, result=${result}`)
     res.json(result);
   } catch (err) {
     res.status(502).json({ error: 'Markdown conversion failed', detail: err.message });
@@ -96,12 +92,16 @@ app.get('/api/health', async (_req, res) => {
   const searxngOk = await searxng.isReachable();
   res.json({
     searxng: searxngOk ? 'ok' : 'unreachable',
-    url2md: urlToMd ? 'loaded' : 'missing',
+    url2md: url2md ? 'loaded' : 'missing',
     markdown_concurrency: MARKDOWN_CONCURRENCY,
   });
 });
 
 // Trader routes
+app.get('/', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 app.get('/trader', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'trader.html'));
 });
