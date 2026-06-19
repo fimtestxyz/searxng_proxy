@@ -1,7 +1,7 @@
 {
-  "name": "searxng-proxy",
+  "name": "gobblemdd",
   "version": "1.0.0",
-  "description": "SearXNG reverse proxy with on-demand markdown conversion",
+  "description": "GobbleMd — eat URLs, poop markdown",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

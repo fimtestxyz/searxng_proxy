@@ -665,6 +665,101 @@
     ::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
+    /* ── Floating Export Button ── */
+    .export-fab {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .fab-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-card);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .fab-btn:hover {
+      border-color: var(--amber);
+      box-shadow: 0 4px 20px var(--amber-glow);
+    }
+    .fab-btn svg {
+      width: 20px;
+      height: 20px;
+      stroke: var(--text-muted);
+      transition: stroke 0.2s;
+    }
+    .fab-btn:hover svg { stroke: var(--amber); }
+
+    .fab-tooltip {
+      position: absolute;
+      right: 58px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--amber);
+      color: var(--bg-primary);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 5px 10px;
+      border-radius: 2px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s;
+    }
+    .fab-btn:hover + .fab-tooltip,
+    .fab-menu.open + .fab-tooltip { opacity: 1; }
+
+    .fab-menu {
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      padding: 6px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      min-width: 140px;
+    }
+    .fab-menu.open { display: flex; }
+
+    .fab-menu button {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 8px 12px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border-radius: 2px;
+      text-align: left;
+      transition: all 0.15s;
+    }
+    .fab-menu button:hover {
+      background: rgba(200, 164, 78, 0.08);
+      color: var(--amber);
+    }
+    .fab-menu button.active {
+      color: var(--amber);
+      font-weight: 600;
+    }
+
     /* ── Responsive ── */
     @media (max-width: 600px) {
       .terminal-frame { padding: 12px 12px 40px; }
@@ -680,7 +775,7 @@
     <header class="terminal-header">
       <div>
         <div class="terminal-title">Market News Search</div>
-        <div class="terminal-subtitle">SearXNG Trader</div>
+        <div class="terminal-subtitle">GobbleMd Trader</div>
       </div>
       <div class="terminal-status">
         <span class="dot"></span>connected
@@ -762,6 +857,22 @@
 
     <!-- Results -->
     <div id="traderResults"></div>
+  </div>
+
+  <!-- Floating Export Button -->
+  <div class="export-fab" id="exportFab">
+    <button class="fab-btn" id="fabBtn" aria-label="Export results" title="Export results">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+    </button>
+    <span class="fab-tooltip">Export results</span>
+    <div class="fab-menu" id="fabMenu">
+      <button data-format="md" class="active" onclick="doExport('md')">Download .md</button>
+      <button data-format="json" onclick="doExport('json')">Download .json</button>
+    </div>
   </div>
 
   <script>
@@ -1050,6 +1161,79 @@
       } finally {
         btn.disabled = false;
       }
+    }
+
+    // ── Floating Export ──
+    const fabBtn = document.getElementById('fabBtn');
+    const fabMenu = document.getElementById('fabMenu');
+
+    fabBtn.addEventListener('click', () => {
+      fabMenu.classList.toggle('open');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!document.getElementById('exportFab').contains(e.target)) {
+        fabMenu.classList.remove('open');
+      }
+    });
+
+    function doExport(format) {
+      fabMenu.classList.remove('open');
+
+      fabMenu.querySelectorAll('button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.format === format);
+      });
+
+      const results = [];
+      document.querySelectorAll('.result-card').forEach(card => {
+        const url = card.dataset.url;
+        const titleEl = card.querySelector('.result-card-title a');
+        const title = titleEl ? titleEl.textContent : '';
+        let markdown = '';
+
+        if (loadedMarkdown.has(url)) {
+          markdown = loadedMarkdown.get(url).markdown || '';
+        } else {
+          const panel = card.querySelector('.markdown-panel');
+          if (panel && panel.querySelector('.error')) {
+            markdown = '(conversion failed)';
+          } else {
+            markdown = '(not yet loaded)';
+          }
+        }
+
+        results.push({ title, url, markdown });
+      });
+
+      if (results.length === 0) {
+        alert('No results to export.');
+        return;
+      }
+
+      const now = new Date();
+      const ts = now.toISOString().slice(0, 10).replace(/-/g, '');
+      const ext = format === 'json' ? 'json' : 'md';
+      const filename = `search-export-${ts}.${ext}`;
+
+      let content;
+      if (format === 'json') {
+        content = JSON.stringify(results, null, 2);
+      } else {
+        content = results.map(r =>
+          '# ' + r.title + '\n\n' +
+          '> ' + r.url + '\n\n' +
+          '---\n\n' +
+          (r.markdown || '(no content)') +
+          '\n\n---\n\n'
+        ).join('\n');
+      }
+
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
     }
   </script>
 </body>

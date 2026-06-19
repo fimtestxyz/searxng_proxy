@@ -160,7 +160,7 @@ app.post('/api/trader/sources', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`SearXNG proxy listening on http://localhost:${PORT}`);
-  console.log(`SearXNG backend: ${searxng.baseUrl}`);
+  console.log(`GobbleMd listening on http://localhost:${PORT}`);
+  console.log(`Backend: ${searxng.baseUrl}`);
   console.log(`Markdown concurrency: ${MARKDOWN_CONCURRENCY}`);
 });
