@@ -7,6 +7,7 @@ const { MarkdownCache } = require('./lib/cache');
 const { MarkdownConverter } = require('./lib/markdown');
 
 const { SourceManager, mapTimeWindow, searchSearXNG } = require('./lib/trader');
+const { createAgentRouter } = require('./agent');
 const sourceManager = new SourceManager();
 
 const PORT = config.port;
@@ -88,6 +89,9 @@ app.post('/api/markdown/batch', async (req, res) => {
   });
 });
 
+// Agentic search & markdown routes
+app.use('/api/agent', createAgentRouter({ searxng, converter }));
+
 app.get('/api/health', async (_req, res) => {
   const searxngOk = await searxng.isReachable();
   res.json({
@@ -160,7 +164,7 @@ app.post('/api/trader/sources', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`SearXNG proxy listening on http://localhost:${PORT}`);
-  console.log(`SearXNG backend: ${searxng.baseUrl}`);
+  console.log(`GobbleMd listening on http://localhost:${PORT}`);
+  console.log(`Backend: ${searxng.baseUrl}`);
   console.log(`Markdown concurrency: ${MARKDOWN_CONCURRENCY}`);
 });

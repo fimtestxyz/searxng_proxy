@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SearXNG — Search</title>
+  <title>GobbleMd — Feed the Web</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;900&family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -431,6 +431,101 @@
     ::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: var(--ink-faint); }
 
+    /* ── Floating Export Button ── */
+    .export-fab {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .fab-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 1px solid var(--rule);
+      background: var(--card-bg);
+      box-shadow: 0 2px 12px var(--shadow);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .fab-btn:hover {
+      border-color: var(--accent);
+      box-shadow: 0 4px 20px rgba(192, 57, 43, 0.12);
+    }
+    .fab-btn svg {
+      width: 20px;
+      height: 20px;
+      stroke: var(--ink-faint);
+      transition: stroke 0.2s;
+    }
+    .fab-btn:hover svg { stroke: var(--accent); }
+
+    .fab-tooltip {
+      position: absolute;
+      right: 58px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--ink);
+      color: var(--paper);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 5px 10px;
+      border-radius: 2px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s;
+    }
+    .fab-btn:hover + .fab-tooltip,
+    .fab-menu.open + .fab-tooltip { opacity: 1; }
+
+    .fab-menu {
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      background: var(--card-bg);
+      border: 1px solid var(--rule);
+      border-radius: 4px;
+      padding: 6px;
+      box-shadow: 0 4px 20px var(--shadow);
+      min-width: 140px;
+    }
+    .fab-menu.open { display: flex; }
+
+    .fab-menu button {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 8px 12px;
+      border: none;
+      background: transparent;
+      color: var(--ink-light);
+      cursor: pointer;
+      border-radius: 2px;
+      text-align: left;
+      transition: all 0.15s;
+    }
+    .fab-menu button:hover {
+      background: var(--paper-dark);
+      color: var(--accent);
+    }
+    .fab-menu button.active {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
     /* ── Responsive ── */
     @media (max-width: 600px) {
       .page-container { padding: 24px 16px 60px; }
@@ -448,7 +543,7 @@
       <div class="masthead-nav">
         <a href="/trader" class="nav-link">Trader →</a>
       </div>
-      <h1 class="masthead-title">SearXNG<em> proxy</em></h1>
+      <h1 class="masthead-title">GobbleMd</h1>
       <div class="masthead-eyebrow">Privacy-respecting metasearch</div>
     </header>
 
@@ -476,7 +571,23 @@
     <div id="status"></div>
     <div id="results"></div>
 
-    <footer class="page-footer">SearXNG Proxy &mdash; Markdown Conversion Engine</footer>
+    <footer class="page-footer">GobbleMd — Eat URLs. Poop Markdown.</footer>
+  </div>
+
+  <!-- Floating Export Button -->
+  <div class="export-fab" id="exportFab">
+    <button class="fab-btn" id="fabBtn" aria-label="Export results" title="Export results">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+    </button>
+    <span class="fab-tooltip">Export results</span>
+    <div class="fab-menu" id="fabMenu">
+      <button data-format="md" class="active" onclick="doExport('md')">Download .md</button>
+      <button data-format="json" onclick="doExport('json')">Download .json</button>
+    </div>
   </div>
 
   <script>
@@ -643,6 +754,81 @@
     }
     function escAttr(s) {
       return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ── Floating Export ──
+    const fabBtn = document.getElementById('fabBtn');
+    const fabMenu = document.getElementById('fabMenu');
+
+    fabBtn.addEventListener('click', () => {
+      fabMenu.classList.toggle('open');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!document.getElementById('exportFab').contains(e.target)) {
+        fabMenu.classList.remove('open');
+      }
+    });
+
+    function doExport(format) {
+      fabMenu.classList.remove('open');
+
+      // Update active button
+      fabMenu.querySelectorAll('button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.format === format);
+      });
+
+      const results = [];
+      document.querySelectorAll('.result').forEach(el => {
+        const url = el.dataset.url;
+        const titleEl = el.querySelector('.result-title a');
+        const title = titleEl ? titleEl.textContent : '';
+        let markdown = '';
+
+        if (loadedMarkdown.has(url)) {
+          markdown = loadedMarkdown.get(url).markdown || '';
+        } else {
+          // Check if there's a panel with error text
+          const panel = el.querySelector('.markdown-panel');
+          if (panel && panel.querySelector('.error')) {
+            markdown = '(conversion failed)';
+          } else {
+            markdown = '(not yet loaded)';
+          }
+        }
+
+        results.push({ title, url, markdown });
+      });
+
+      if (results.length === 0) {
+        alert('No results to export.');
+        return;
+      }
+
+      const now = new Date();
+      const ts = now.toISOString().slice(0, 10).replace(/-/g, '');
+      const ext = format === 'json' ? 'json' : 'md';
+      const filename = `search-export-${ts}.${ext}`;
+
+      let content;
+      if (format === 'json') {
+        content = JSON.stringify(results, null, 2);
+      } else {
+        content = results.map(r =>
+          '# ' + r.title + '\n\n' +
+          '> ' + r.url + '\n\n' +
+          '---\n\n' +
+          (r.markdown || '(no content)') +
+          '\n\n---\n\n'
+        ).join('\n');
+      }
+
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
     }
   </script>
 </body>
