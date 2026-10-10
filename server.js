@@ -7,6 +7,7 @@ const { MarkdownCache } = require('./lib/cache');
 const { MarkdownConverter } = require('./lib/markdown');
 
 const { SourceManager, mapTimeWindow, searchSearXNG } = require('./lib/trader');
+const { createAgentRouter } = require('./agent');
 const sourceManager = new SourceManager();
 
 const PORT = config.port;
@@ -87,6 +88,9 @@ app.post('/api/markdown/batch', async (req, res) => {
     elapsed_ms: Date.now() - t0,
   });
 });
+
+// Agentic search & markdown routes
+app.use('/api/agent', createAgentRouter({ searxng, converter }));
 
 app.get('/api/health', async (_req, res) => {
   const searxngOk = await searxng.isReachable();

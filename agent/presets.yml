@@ -1,0 +1,99 @@
+# ==============================================================================
+# Agent Search Presets Configuration
+# Edit or add research presets below. Changes hot-reload automatically without restart.
+# ==============================================================================
+
+presets:
+  # 1. Fintech & Investor Relations (Earnings, transcripts, guidance, primary press wires)
+  fintech_ir:
+    name: "Fintech & Investor Relations"
+    description: "Target earnings reports, quarterly results, forward guidance, SEC disclosures, and primary press wires"
+    allowed_domains:
+      - sec.gov
+      - businesswire.com
+      - prnewswire.com
+      - globenewswire.com
+      - reuters.com
+      - marketwatch.com
+      - cnbc.com
+    domain_patterns:
+      - "^investor\\."
+      - "^ir\\."
+      - "investors\\."
+    query_suffix: "earnings OR guidance OR \"quarterly results\" OR \"financial results\""
+    time_range: "month"
+    default_limit: 5
+    max_chars_per_page: 25000
+    preserve_tables: true
+
+  # 2. Regulatory & Compliance Filings
+  regulatory:
+    name: "Regulatory & Compliance Filings"
+    description: "Target financial regulators, government legal enforcement, and material corporate filings"
+    allowed_domains:
+      - sec.gov
+      - fca.org.uk
+      - mas.gov.sg
+      - bis.org
+      - cftc.gov
+      - consumerfinance.gov
+      - federalreserve.gov
+      - esma.europa.eu
+    query_suffix: "filing OR enforcement OR order OR \"Form 8-K\" OR \"Form 10-Q\" OR penalty"
+    time_range: "year"
+    default_limit: 5
+    max_chars_per_page: 30000
+    preserve_tables: true
+
+  # 3. Deep Tech & AI Intelligence
+  tech_intel:
+    name: "Deep Tech & AI Intelligence"
+    description: "Target research papers, architecture whitepapers, tech teardowns, and engineering blogs"
+    allowed_domains:
+      - arxiv.org
+      - github.com
+      - huggingface.co
+      - news.ycombinator.com
+      - openreview.net
+      - paperswithcode.com
+    domain_patterns:
+      - "^engineering\\."
+      - "^research\\."
+      - "^tech\\."
+    time_range: "year"
+    default_limit: 5
+    max_chars_per_page: 20000
+
+  # 4. Competitor & Pricing Teardowns
+  competitor:
+    name: "Competitor & Pricing Teardown"
+    description: "Target pricing pages, fee schedules, terms of service, API docs, and product changelogs"
+    path_patterns:
+      - "/pricing"
+      - "/fees"
+      - "/terms"
+      - "/docs"
+      - "/api"
+      - "/changelog"
+      - "/features"
+    default_limit: 4
+    max_chars_per_page: 20000
+    preserve_tables: true
+
+  # 5. Macroeconomics & Central Banks
+  macro:
+    name: "Macro & Central Banks"
+    description: "Target central bank interest rates, inflation metrics, monetary policy, and Treasury yields"
+    allowed_domains:
+      - federalreserve.gov
+      - treasury.gov
+      - ecb.europa.eu
+      - bis.org
+      - imf.org
+      - worldbank.org
+      - bls.gov
+    query_suffix: "\"monetary policy\" OR inflation OR \"interest rate\" OR yields OR FOMC"
+    time_range: "month"
+    default_limit: 5
+    max_chars_per_page: 25000
+    preserve_tables: true
